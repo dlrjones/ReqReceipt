@@ -26,10 +26,11 @@ namespace ReqReceipt
         private Hashtable itemUM = new Hashtable(); // key=itemNo valu=unit of measure
         private Hashtable reqBuyer = new Hashtable(); // key=reqID valu=list of buyers
        // private Hashtable codeBuyerEmail = new Hashtable(); // key=buyerCode valu=email of buyer group
-        private ArrayList debugCCList = new ArrayList();
+        private ArrayList partialCCList = new ArrayList();
         private static string connectStrHEMM = "";
         private static string connectStrBIAdmin = "";
         private static string buyerTeams = "";
+        private static string userName = "";
         private static NameValueCollection ConfigData = null;
         protected static ODMDataFactory ODMDataSetFactory = null;
         private static DataSetManager dsm = null;
@@ -45,9 +46,9 @@ namespace ReqReceipt
             set { dsYesterday = value; }
         }
 
-        public ArrayList DebugCCList
+        public ArrayList PartialCCList
         {
-            set { debugCCList = value; }
+            set { partialCCList = value; }
         }
 
         public DataSet DSCurrent
@@ -100,6 +101,10 @@ namespace ReqReceipt
         public Hashtable ItemsThatChanged
         {
             set { itemsThatChanged = value; }
+        }
+        public string UserName
+        {
+            get { return userName; }
         }
         public bool Debug
         {
@@ -228,6 +233,53 @@ namespace ReqReceipt
             }
         }
 
+        public void GetUserName(string uid)
+        {
+            ArrayList name = new ArrayList();
+            ODMRequest Request = new ODMRequest();
+            Request.ConnectString = connectStrHEMM;
+            Request.CommandType = CommandType.Text;
+            Request.Command = "SELECT NAME FROM USR WHERE LOGIN_ID = '" + uid + "'";
+            name = ODMDataSetFactory.ExecuteDataReader(ref Request);
+            if (name.Count > 0)
+                userName = name[0].ToString().Trim();
+        }
+
+        public string GetManagerEmail(string cc)
+        {
+            string sql = "SELECT EMAIL +'@uw.edu' " +
+                         "FROM [uwm_BIAdmin].[dbo].[HMC_DeptContactList] " +
+                         "WHERE CCN = " + cc;   // GetCC(reqNo);
+            lm.Write("Cost Center: " + cc);
+            ArrayList email = new ArrayList();
+            ODMRequest Request = new ODMRequest();
+            Request.ConnectString = connectStrBIAdmin;
+            Request.CommandType = CommandType.Text;
+            Request.Command = sql;
+            email = ODMDataSetFactory.ExecuteDataReader(ref Request);
+            if (email.Count == 0)
+                email.Add("");
+            return email[0].ToString().Trim();
+        }
+
+        private string GetCC(string reqNo)
+        {
+            string sql = "SELECT ACCT_NO " +
+                         "FROM CC " +
+                         "JOIN REQ ON REQ.CC_ID = CC.CC_ID " +
+                         "WHERE REQ_NO = '" + reqNo + "'";
+            ArrayList cc = new ArrayList();
+            ODMRequest Request = new ODMRequest();
+            Request.ConnectString = connectStrHEMM;
+            Request.CommandType = CommandType.Text;
+            Request.Command = sql;
+            cc = ODMDataSetFactory.ExecuteDataReader(ref Request);
+            if (cc.Count == 0)
+                cc.Add("");
+
+            return cc[0].ToString().Trim();
+        }
+
         public void InsertTodaysList()
         {
             if (trace) { lm.Write("TRACE:  DataSetManager/InsertTodaysList"); }
@@ -239,8 +291,8 @@ namespace ReqReceipt
                 Request.CommandType = CommandType.Text;
                 foreach (DataRow drow in dsCurrent.Tables[0].Rows)//dsCurrent is loaded from Program.cs calling dsm.LoadTodaysDataSet();
                 {                                                       //req_id (3) & req_item_id (1)
-                    if (debugCCList[0].ToString().Length == 0  || debugCCList.Contains(drow[9].ToString().Trim()))
-                    {
+                    if (partialCCList[0].ToString().Length == 0  || partialCCList.Contains(drow[9].ToString().Trim()))
+                    {//if a list of cc's isn't available then do this for all cc's otherwise do it for a specific cc in the list
                         bool goodToGo = CheckExistingRecordCount(Convert.ToInt32(drow[3]), Convert.ToInt32(drow[1]));
                         if (goodToGo)
                         {   //insert into hmcmm_ReqItemReceipt if it is NOT already in there - goodToGo being true means 
@@ -429,8 +481,8 @@ namespace ReqReceipt
                            "JOIN dbo.USR ON USR.USR_ID = REQ.REC_CREATE_USR_ID " +
                            "JOIN CC ON CC.CC_ID = REQ.CC_ID " +
                            "WHERE REQ.REC_CREATE_DATE BETWEEN CONVERT(DATE,GETDATE()) AND CONVERT(DATE,GETDATE() + 1) " +
-                           "AND LOGIN_ID <> ''iface'' AND REQ_TYPE IN (2,3) " +
-                           "ORDER BY 8,4,1 ";               //references param 7,3 and 0 above  --  AND REQ_TYPE <> 3
+                           "AND LOGIN_ID <> ''iface'' AND REQ_TYPE IN (2,3) AND RI.STAT <> 8 " +
+                           "ORDER BY 8,4,1 ";               //references param 7,3 and 0 above  --  AND REQ_TYPE <> 3  RI.STAT = 8 = "Draft"
             return query;
         }
 
