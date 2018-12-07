@@ -22,7 +22,7 @@ namespace ReqReceipt
         private Hashtable itemItemNo = new Hashtable();
         private Hashtable itemDesc = new Hashtable();
         private Hashtable itemLogin = new Hashtable();
-        private Hashtable receiptList = new Hashtable();
+        private Hashtable receiptList = new Hashtable();        //key=REQ_ID  valu=LOGIN_ID
         private Hashtable reqDate = new Hashtable();
         private Hashtable userItems = new Hashtable();
         private Hashtable debugCCRecip = new Hashtable();
@@ -36,11 +36,9 @@ namespace ReqReceipt
         class UserNameVariant
         {
             //takes in the path to the text file containing the names of users who have an email id different from their AMC id.
-            //each entry looks like this - mdanna|dannam
+            //each entry looks like this - username|emailname  ie: mdanna|dannam
             Hashtable userItems = new Hashtable();
             private string unamePath = "";
-           // private LogManager lm = LogManager.GetInstance();
-
             public string UnamePath
             {
                 set { unamePath = value; }
@@ -86,9 +84,6 @@ namespace ReqReceipt
                     }
                 }
             }
-            //          WHERE LOGIN_ID IN ('mharrington','sbuckingham','mdanna','bsimmons','ayyoub','fyoshioka',
-            //'jvarghese','mvasiliades','bwalker','dlam','sgoss','enewcombe','aclouse','jrudd',
-            //'kburkette','ewardenburg','mofo','ccastillo')
         }
         public DataSet DSYesterday
         {
@@ -183,7 +178,7 @@ namespace ReqReceipt
         private void StoreNewReqs()
         {
             if (trace) { lm.Write("TRACE:  ProcessManager/StoreNewReqs"); }
-            dsm.DebugCCList = GetCCList(ConfigData.Get("debugCCList"));
+            dsm.PartialCCList = GetCCList(ConfigData.Get("partialCCList"));
             dsm.InsertTodaysList();
             receiptList = dsm.SendReceipt;
             reqDate = dsm.ReqDate;
@@ -211,7 +206,6 @@ namespace ReqReceipt
                     ht.Add(dictionaryEntry.Key, new ArrayList((ArrayList)dictionaryEntry.Value));
                 }
             }
-
             return ht;
         }
 

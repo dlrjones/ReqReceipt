@@ -25,11 +25,11 @@ namespace ReqReceipt
             if (args.Length > 0)
             {
                 cleanUp = true;
-            }
-            //LogManager lm = LogManager.GetInstance();
+            }            
             ConfigData = (NameValueCollection)ConfigurationSettings.GetConfig("appSettings");
             try
-            {                
+            {                                  
+
                 lm.Write("Program/Main:  " + "BEGIN");
                 GetParameters();                
                 LoadData();

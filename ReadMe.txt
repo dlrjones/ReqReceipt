@@ -4,6 +4,10 @@ For each run of this app, with no parameters, a list of reqs submitted since mid
 If the req is already in the table then it is ignored. If it's not in the table then it gets flagged for sending an email to the requestor 
 (the receipt) and then inserted into the table.
 
+emails are also sent to the Cost Center managers by searching the UWM-HEBI1/uwm_BIAdmin/[HMC_DeptContactList] table. This table can be updated as needed by truncating the existing table and then importing the new data from the excel spreadsheet (HMC Dept Contact List FY2019.xlsx -- copy in \\Lapis\h_purchasing$\Purchasing\PMM IS data\HEMM Apps\SourceCode\ReqReceipt (GH))
+
+NOTE The Dept Contact List excel file on GitHub is encrypted. Use EncryptAndHash.exe with no key to restore it.
+
 
 // Email Password
 /*

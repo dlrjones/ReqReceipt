@@ -11,11 +11,13 @@ namespace ReqReceipt
     {
         #region ClassVariables
         private ArrayList reqItems = new ArrayList();
-        private ArrayList debugCCList = new ArrayList();
+        private ArrayList partialCCList = new ArrayList();
         private string debugRecipientList = "";        
         private string reqNo = "";
         private string reqDate = ""; 
         private string userName = "";
+        private string recipientName = "";
+        private string costCenterManager = "";
         private string recipient = "";
         private string body = "";
         private string attachmentPath = "";
@@ -67,9 +69,9 @@ namespace ReqReceipt
         {
             set { debugRecipientList = value; }
         }
-        public ArrayList DebugCCList
+        public ArrayList PartialCCList
         {
-            set { debugCCList = value; }
+            set { partialCCList = value; }
         }
         public string UnameVarients
         {
@@ -123,9 +125,10 @@ namespace ReqReceipt
             //ProcessManager.SendOutput has a ForEach loop which invokes this method once for each recipient in the recipient list
             if (trace) { lm.Write("TRACE:  OutputManager/SendOutput"); }
             FormatEmail();
-           // FormatAttachment();
-            SendMail();
+            SendMail();       //////////////
         }
+
+//DEBUG IS OFF  ---  uncomment line 250 - .Send(mail)
 
         private void FormatEmail()
         {
@@ -137,24 +140,22 @@ namespace ReqReceipt
 
             try
             {
-                body = "The requisition you submitted -  Requisition # " + reqNo + " on " + dateTime[0].ToString() +
-                        " - was accepted into HEMM at " + dateTime[1].ToString() + " " + dateTime[2].ToString() +
-                        " and is starting through the approval process. " +
+                recipientName = GetRecipientName(userName);
+                costCenterManager = GetCCManager();
+                body = "HEMM has received Requisition # " + reqNo + ", submitted by " + recipientName + " on " + dateTime[0].ToString() +
+                        " at " + dateTime[1].ToString() + " " + dateTime[2].ToString() + ", and has started it through the approval process." + 
                         "Please contact your buyer group at " + reqBuyer[reqNo] + " if you have any questions." + Environment.NewLine + Environment.NewLine;
 
                 //these next 4 lines (counting 'foreach' as one line) were added to include the item# and description for the items on each req.
-                //this is a test beyond the original test of simply sending the req receipt email
                 GetItemList(); //added to include item# and Descr   (reqNo)
                 itemList = reqItem[reqNo].ToString().Split(",".ToCharArray());
                 body += "ITEM #" + TAB + TAB + "QTY" + TAB + "UM" + TAB + "DESCRIPTION" + Environment.NewLine;
                 foreach (string item in itemList)
                 {
                     if(item.Length > 6)
-                       // body += item + TAB + TAB + itemDesc[item.Trim()].ToString().Trim() + Environment.NewLine;
                         body += item + TAB + itemQty[item.Trim()].ToString().Trim() + TAB + itemUM[item.Trim()].ToString().Trim() + TAB +  itemDesc[item.Trim()].ToString().Trim() + Environment.NewLine;
                     else
                         body += item + TAB + TAB + itemQty[item.Trim()].ToString().Trim() + TAB + itemUM[item.Trim()].ToString().Trim() + TAB +  itemDesc[item.Trim()].ToString().Trim() + Environment.NewLine;
-                    //body += item + TAB + TAB + TAB + itemDesc[item.Trim()].ToString().Trim() + TAB + itemQty[item.Trim()].ToString().Trim() + TAB + itemUM[item.Trim()].ToString().Trim() + Environment.NewLine;
                 }
             }
             catch(Exception ex)
@@ -163,28 +164,10 @@ namespace ReqReceipt
             }
             if (!userName.Contains("@"))
                 userName += "@uw.edu";
-            recipient = userName;            
+            recipient = userName;
         }
 
-        private void GetItemList()              //string reqno
-        {
-            //retrieves the hashtables reqItem and itemDescr from the DataSet Manager
-            if (trace) { lm.Write("TRACE:  OutputManager/GetItemList"); }
-            DataSetManager dsm = DataSetManager.GetInstance();
-            reqItem = dsm.ReqItem;
-            itemDesc = dsm.ItemDescr;
-            itemQty = dsm.ItemQty;
-            itemUM = dsm.ItemUM;
-    }
-
-        private string NonCtlgCheck(string itemNo)
-        {//filter out the non-catalog items -- may not be used
-            if (trace) { lm.Write("TRACE:  OutputManager/NonCtlgCheck"); }
-            if (itemNo.Contains("~"))
-                itemNo = "Non Catalog";
-            return itemNo;
-        }       
-
+       
         private void SendMail()
         {
             if (trace) { lm.Write("TRACE:  OutputManager/SendMail"); }
@@ -200,7 +183,6 @@ namespace ReqReceipt
                 if (debug)
                 {
                     dbugRecipList = debugRecipientList.Split(",".ToCharArray());
-                    //debug = true;
                     foreach (string recip in dbugRecipList)
                     {
                         if (recip.Equals(recipient))  //this conditional was added to test the app with a few specific recipients 
@@ -212,62 +194,69 @@ namespace ReqReceipt
                 else //not in debug mode
                 {                    
                     mail.To.Add(recipient);
+                    mail.To.Add(costCenterManager);
+                    mail.To.Add("dlrjones@uw.edu");
                 }
-                //for certain cost centers send a receipt to the manager.
-                try
+
+                //for certain cost centers send a receipt to the manager - this list comes from the debugCCRecip key in the app.config file
+                if (debug)
                 {
-                    foreach (object key in debugCCRecip.Keys)
+                    try
                     {
-                        if (key.ToString().Trim().Equals(currentAcctNo.Trim()))
+                        foreach (object key in debugCCRecip.Keys)
                         {
-                            dbugCCRecip = debugCCRecip[key].ToString().Split(",".ToCharArray());
-                            foreach (string emailTO in dbugCCRecip)
+                            if (key.ToString().Trim().Equals(currentAcctNo.Trim()))
                             {
-                                mail.To.Add(emailTO);
+                                dbugCCRecip = debugCCRecip[key].ToString().Split(",".ToCharArray());
+                                foreach (string emailTO in dbugCCRecip)
+                                {
+                                    mail.To.Add(emailTO);
+                                }
                             }
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    lm.Write("EmailTO Error: " + ex.Message);
+                    catch (Exception ex)
+                    {
+                        lm.Write("EmailTO Error: " + ex.Message);
+                    }
                 }
 
-                //       mail.To.Add("dlrjones@uw.edu");
                 mail.Subject = "Requisition " + reqNo + " Receipt";
-                if (debug)
-                //    mail.Subject += "       " + recipient;  //commented out to accommodate a specific test
-                        mail.Body = body +
-                            Environment.NewLine + Environment.NewLine +
-                            "Thanks," +
-                            Environment.NewLine +
-                            Environment.NewLine +
-                            "PMMHelp" + Environment.NewLine +
-                            "UW Medicine Harborview Medical Center" + Environment.NewLine +
-                            "Supply Chain Management Informatics" + Environment.NewLine +
-                            "206-598-0044" + Environment.NewLine +
-                            "pmmhelp@uw.edu";
-                        mail.ReplyToList.Add("pmmhelp@uw.edu");
-                        if (addAttachment)
-                        {
-                            Attachment attachment;
-                            attachment = new Attachment(attachmentPath + extension);
-                            mail.Attachments.Add(attachment);
-                        }
-                        SmtpServer.Port = 587;
-                        SmtpServer.Credentials = new System.Net.NetworkCredential("pmmhelp", GetKey());
-                        SmtpServer.EnableSsl = true;
+                mail.Body = body +
+                    Environment.NewLine + Environment.NewLine +
+                    "Thanks," +
+                    Environment.NewLine +
+                    Environment.NewLine +
+                    "PMMHelp" + Environment.NewLine +
+                    "UW Medicine Harborview Medical Center" + Environment.NewLine +
+                    "Supply Chain Management Informatics" + Environment.NewLine +
+                    "206-598-0044" + Environment.NewLine +
+                    "pmmhelp@uw.edu";
+                mail.ReplyToList.Add("pmmhelp@uw.edu");
+                if (addAttachment)
+                {
+                    Attachment attachment;
+                    attachment = new Attachment(attachmentPath + extension);
+                    mail.Attachments.Add(attachment);
+                }
+                SmtpServer.Port = 587;
+                SmtpServer.Credentials = new System.Net.NetworkCredential("pmmhelp", GetKey());
+                SmtpServer.EnableSsl = true;
                 try
                 { //debug=true sends all emails to dlrjones@uw.edu
+                    
                     if (!debug && mail.To.Count > 0)
-                        SmtpServer.Send(mail);
+                    {
+                       SmtpServer.Send(mail);
+                    }
                     logMssg = "OutputManager/SendMail:  Sent To  " + mail.To + "  [Req# " + reqNo + "]  mailTO count: " + mail.To.Count;
+                    
 
                     if (debug && mail.To.Count > 0)
                     {
-                        logMssg += "       (for " + recipient + ")";
-   ////////////                     SmtpServer.Send(mail); //comment this out to prevent emails going to dlrjones while debug = true
-                    }                   
+                        logMssg += "       (for " + recipient + "     " + recipientName + ")";
+                        SmtpServer.Send(mail); //comment this out to prevent emails going to dlrjones while debug = true
+                    }
                 }
                 catch (SmtpException ex)
                 {
@@ -304,7 +293,40 @@ namespace ReqReceipt
                 lm.Write("OutputManager/SendMail: Exception    " + mssg);
             }
         
-        }       
+        }
+
+        private void GetItemList()
+        {
+            //retrieves the hashtables reqItem and itemDescr from the DataSet Manager
+            if (trace) { lm.Write("TRACE:  OutputManager/GetItemList"); }
+            DataSetManager dsm = DataSetManager.GetInstance();
+            reqItem = dsm.ReqItem;
+            itemDesc = dsm.ItemDescr;
+            itemQty = dsm.ItemQty;
+            itemUM = dsm.ItemUM;
+        }
+
+        private string GetRecipientName(string emailAddr)
+        {
+            string[] email = emailAddr.Split('@');
+            DataSetManager dsm = DataSetManager.GetInstance();
+            dsm.GetUserName(email[0].Trim());
+            return dsm.UserName.Trim();
+        }
+
+        private string GetCCManager()
+        {
+            DataSetManager dsm = DataSetManager.GetInstance();
+            return dsm.GetManagerEmail(currentAcctNo);
+        }
+
+        private string NonCtlgCheck(string itemNo)
+        {//filter out the non-catalog items -- may not be used
+            if (trace) { lm.Write("TRACE:  OutputManager/NonCtlgCheck"); }
+            if (itemNo.Contains("~"))
+                itemNo = "Non Catalog";
+            return itemNo;
+        }
 
         public string GetKey()
         {
