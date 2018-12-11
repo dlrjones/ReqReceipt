@@ -481,8 +481,9 @@ namespace ReqReceipt
                            "JOIN dbo.USR ON USR.USR_ID = REQ.REC_CREATE_USR_ID " +
                            "JOIN CC ON CC.CC_ID = REQ.CC_ID " +
                            "WHERE REQ.REC_CREATE_DATE BETWEEN CONVERT(DATE,GETDATE()) AND CONVERT(DATE,GETDATE() + 1) " +
-                           "AND LOGIN_ID <> ''iface'' AND REQ_TYPE IN (2,3) AND RI.STAT <> 8 " +
+                           "AND LOGIN_ID <> ''iface'' AND REQ_TYPE IN (2) AND RI.STAT <> 8 " +
                            "ORDER BY 8,4,1 ";               //references param 7,3 and 0 above  --  AND REQ_TYPE <> 3  RI.STAT = 8 = "Draft"
+                                                            // Req_Type changed to 8 for par forms to catch actual par form submissions
             return query;
         }
 
