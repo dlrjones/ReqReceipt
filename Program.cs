@@ -30,15 +30,15 @@ namespace ReqReceipt
             try
             {                                  
 
-                lm.Write("Program/Main:  " + "BEGIN");
+               // lm.Write("Program/Main:  " + "BEGIN");
                 GetParameters();                
                 LoadData();
                 if (cleanUp)
-                    lm.Write("Program/Main:  " + "END");
+                    lm.Write("Program/Main:  " + "End Clean Up");
                 else
                 {                   
                     Process();
-                    lm.Write("Program/Main:  " + "END");
+                //    lm.Write("Program/Main:  " + "END");
                 }
             }
             catch (Exception ex)
@@ -77,7 +77,7 @@ namespace ReqReceipt
             else
             {
                 dsm.LoadTodaysDataSet();
-                dsm.LoadYesterdayList();
+                dsm.LoadYesterdayList();      //dsm.LoadStoredReceipts();
             }
         }
       

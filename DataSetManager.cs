@@ -24,8 +24,9 @@ namespace ReqReceipt
         private Hashtable itemDescr = new Hashtable(); // key=itemNo valu=descr
         private Hashtable itemQty = new Hashtable(); // key=itemNo valu=qty ordered
         private Hashtable itemUM = new Hashtable(); // key=itemNo valu=unit of measure
-        private Hashtable reqBuyer = new Hashtable(); // key=reqID valu=list of buyers
-       // private Hashtable codeBuyerEmail = new Hashtable(); // key=buyerCode valu=email of buyer group
+        private Hashtable reqBuyer = new Hashtable(); // key=reqID valu=list of team email
+        private Hashtable reqBuyerTeamName = new Hashtable(); // key=reqID valu=Buyer team abbreviation
+                                                      // private Hashtable codeBuyerEmail = new Hashtable(); // key=buyerCode valu=email of buyer group
         private ArrayList partialCCList = new ArrayList();
         private static string connectStrHEMM = "";
         private static string connectStrBIAdmin = "";
@@ -328,10 +329,12 @@ namespace ReqReceipt
             ArrayList buyerCode = new ArrayList();
             try
             {
-                Request.Command = "SELECT EMAIL FROM [dbo].[uwm_CC_TEAM] WHERE COST_CENTER = " + cc;
+                Request.Command = "SELECT EMAIL,TEAM FROM [dbo].[uwm_CC_TEAM] WHERE COST_CENTER = " + cc;
                 buyerCode = ODMDataSetFactory.ExecuteDataReader(Request);
                 if (!(reqBuyer.ContainsKey(reqID)))
-                    reqBuyer.Add(reqID, buyerCode[0].ToString());
+                {
+                    reqBuyer.Add(reqID, buyerCode[0].ToString() + buyerCode[1].ToString());
+                }
             }
             catch (Exception ex)
             {
