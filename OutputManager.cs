@@ -25,7 +25,8 @@ namespace ReqReceipt
         private string helpFile = "pmmhelp.txt";
         private string unameVarients = "";
         private string currentAcctNo = "";
-        private string[] ccList;
+        private string buyerEmail = "";
+        private string buyerTeamName = "";
         private bool debug = false;
         private bool trace = false;
         private bool addAttachment = false;
@@ -41,8 +42,8 @@ namespace ReqReceipt
         private Hashtable itemDescr = new Hashtable();//itemNo - descr
         private Hashtable itemQty = new Hashtable(); // key=itemNo valu=qty ordered
         private Hashtable itemUM = new Hashtable(); // key=itemNo valu=unit of measure
+        private Hashtable reqBuyer = new Hashtable();
         private LogManager lm = LogManager.GetInstance();
-        private int fileCount = 1;
         #endregion
         #region parameters
         public ArrayList ReqItems
@@ -100,15 +101,28 @@ namespace ReqReceipt
         public Hashtable ItemDesc
         {
             set { itemDesc = value; }
-        }
-        private Hashtable reqBuyer = null;
+        }        
         public Hashtable DebugCCRecip
         {
             set { debugCCRecip = value; }
         }
         public Hashtable ReqBuyer
         {
-            set { reqBuyer = value; }
+            set
+            {
+                reqBuyer = value;
+                if (reqBuyer.Count > 0)
+                {
+                    try
+                    {
+                       string[] buyer = reqBuyer[reqNo].ToString().Split("|".ToCharArray());
+                        buyerEmail = buyer[0];
+                        buyerTeamName = buyer[1];
+                    }
+                    catch(Exception ex)
+                    { lm.Write("OutputManager/ReqBuyer init:  ERROR:  " + ex.Message); }
+                }
+            }                        
         }
         public bool Debug
         {
@@ -133,8 +147,6 @@ namespace ReqReceipt
         private void FormatEmail()
         {
             if (trace) { lm.Write("TRACE:  OutputManager/FormatEmail"); }
-            string desc = "";
-            string status = "";
             string[] dateTime = reqDate.Split(" ".ToCharArray());
             string[] itemList;
 
@@ -144,7 +156,7 @@ namespace ReqReceipt
                 costCenterManager = GetCCManager();
                 body = "HEMM has received Requisition # " + reqNo + ", submitted by " + recipientName + " on " + dateTime[0].ToString() +
                         " at " + dateTime[1].ToString() + " " + dateTime[2].ToString() + ", and has started it through the approval process." + 
-                        "Please contact your buyer group at " + reqBuyer[reqNo] + " if you have any questions." + Environment.NewLine + Environment.NewLine;
+                        "Please contact your buyer group at " + buyerEmail + " if you have any questions." + Environment.NewLine + Environment.NewLine; //reqBuyer[reqNo]
 
                 //these next 4 lines (counting 'foreach' as one line) were added to include the item# and description for the items on each req.
                 GetItemList(); //added to include item# and Descr   (reqNo)
@@ -179,7 +191,7 @@ namespace ReqReceipt
                 bool mailError = false;
                 MailMessage mail = new MailMessage();
                 SmtpClient SmtpServer = new SmtpClient("smtp.uw.edu");
-                mail.From = new MailAddress("pmmhelp@uw.edu");
+                mail.From = new MailAddress(buyerEmail);         //reqBuyer[reqNo].ToString() //("pmmhelp@uw.edu");
                 if (debug)
                 {
                     dbugRecipList = debugRecipientList.Split(",".ToCharArray());
@@ -192,10 +204,11 @@ namespace ReqReceipt
                     }                    
                 }
                 else //not in debug mode
-                {                    
+                {
                     mail.To.Add(recipient);
                     mail.To.Add(costCenterManager);
-                    mail.To.Add("dlrjones@uw.edu");
+                 //   mail.To.Add("dlrjones@uw.edu");
+                    mail.Bcc.Add("dlrjones@uw.edu");
                 }
 
                 //for certain cost centers send a receipt to the manager - this list comes from the debugCCRecip key in the app.config file
@@ -227,12 +240,19 @@ namespace ReqReceipt
                     "Thanks," +
                     Environment.NewLine +
                     Environment.NewLine +
-                    "PMMHelp" + Environment.NewLine +
-                    "UW Medicine Harborview Medical Center" + Environment.NewLine +
-                    "Supply Chain Management Informatics" + Environment.NewLine +
-                    "206-598-0044" + Environment.NewLine +
-                    "pmmhelp@uw.edu";
-                mail.ReplyToList.Add("pmmhelp@uw.edu");
+                    buyerTeamName.ToUpper() + " Team" + Environment.NewLine +
+                    "Strategic Sourcing" + Environment.NewLine +
+                    "UW Medicine Supply Chain Management" + Environment.NewLine +
+                    buyerEmail;    // reqBuyer[reqNo].ToString();
+
+
+
+                //"PMMHelp" + Environment.NewLine +
+                //"UW Medicine Harborview Medical Center" + Environment.NewLine +
+                //"Supply Chain Management Informatics" + Environment.NewLine +
+                //"206-598-0044" + Environment.NewLine +
+                //"pmmhelp@uw.edu";
+                mail.ReplyToList.Add(reqBuyer[reqNo].ToString());        //("pmmhelp@uw.edu");
                 if (addAttachment)
                 {
                     Attachment attachment;
@@ -244,7 +264,7 @@ namespace ReqReceipt
                 SmtpServer.EnableSsl = true;
                 try
                 { //debug=true sends all emails to dlrjones@uw.edu
-                    
+                  //  debug = true;
                     if (!debug && mail.To.Count > 0)
                     {
                        SmtpServer.Send(mail);

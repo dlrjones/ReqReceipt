@@ -14,7 +14,7 @@ namespace ReqReceipt
     {
         #region Class Variables & Parameters
         private DataSet dsYesterday = new DataSet();
-        private DataSet dsCurrentChangeDates;
+     //   private DataSet dsCurrentChangeDates;
         private Hashtable itemChangeDate = new Hashtable();
         private Hashtable itemReq = new Hashtable();
         private Hashtable itemReqLine = new Hashtable();
@@ -102,7 +102,7 @@ namespace ReqReceipt
 
         public ProcessManager()
         {
-            ConfigData = (NameValueCollection)ConfigurationSettings.GetConfig("appSettings");
+            ConfigData = (NameValueCollection)ConfigurationManager.GetSection("appSettings");
         }
 
         public void Begin()
@@ -124,11 +124,11 @@ namespace ReqReceipt
             om.ItemsThatChanged = itemsThatChanged;
             om.ItemItemNo = itemItemNo;
             om.ItemDesc = itemDesc;
-            om.ReqBuyer = dsm.ReqBuyer;
-            GetUserNameVariant();
-            int itemID = 0;
             try
             {
+                //om.ReqBuyer = dsm.ReqBuyer;
+                //GetUserNameVariant();
+            
                 if (debug)
                 {
                     om.DebugRecipientList = ConfigData.Get("debugRecipientList");                    
@@ -140,6 +140,8 @@ namespace ReqReceipt
                 foreach (DictionaryEntry de in receiptList)
                 {
                     om.ReqNo = de.Key.ToString();
+                    om.ReqBuyer = dsm.ReqBuyer;
+                    GetUserNameVariant();
                     om.UserName = de.Value.ToString().Trim();
                     om.ReqDate = (reqDate[de.Key]).ToString();
                     om.Trace = trace;

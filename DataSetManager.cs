@@ -24,12 +24,13 @@ namespace ReqReceipt
         private Hashtable itemDescr = new Hashtable(); // key=itemNo valu=descr
         private Hashtable itemQty = new Hashtable(); // key=itemNo valu=qty ordered
         private Hashtable itemUM = new Hashtable(); // key=itemNo valu=unit of measure
-        private Hashtable reqBuyer = new Hashtable(); // key=reqID valu=list of buyers
-       // private Hashtable codeBuyerEmail = new Hashtable(); // key=buyerCode valu=email of buyer group
+        private Hashtable reqBuyer = new Hashtable(); // key=reqID valu=list of team email
+        private Hashtable reqBuyerTeamName = new Hashtable(); // key=reqID valu=Buyer team abbreviation
+                                                      // private Hashtable codeBuyerEmail = new Hashtable(); // key=buyerCode valu=email of buyer group
         private ArrayList partialCCList = new ArrayList();
         private static string connectStrHEMM = "";
         private static string connectStrBIAdmin = "";
-        private static string buyerTeams = "";
+    //    private static string buyerTeams = "";
         private static string userName = "";
         private static NameValueCollection ConfigData = null;
         protected static ODMDataFactory ODMDataSetFactory = null;
@@ -129,12 +130,12 @@ namespace ReqReceipt
 
         private void InitDataSetManager()
         {
-            string[] buyers;
-            string[] codeList;
+            //string[] buyers;
+        //    string[] codeList;
             if (trace) { lm.Write("TRACE:  DataSetManager/InitDataSetManager"); }
             lm.Debug = debug;
-            ODMDataSetFactory = new ODMDataFactory();
-            ConfigData = (NameValueCollection)ConfigurationSettings.GetConfig("appSettings");
+            ODMDataSetFactory = new ODMDataFactory();        
+            ConfigData = (NameValueCollection)ConfigurationManager.GetSection("appSettings");
             connectStrHEMM = ConfigData.Get("cnctHEMM_HMC");
             connectStrBIAdmin = ConfigData.Get("cnctBIAdmin_HMC");
             //buyerTeams = ConfigData.Get("buyerTeams");
@@ -169,7 +170,8 @@ namespace ReqReceipt
             ODMRequest Request = new ODMRequest();
             Request.ConnectString = connectStrHEMM;
             Request.CommandType = CommandType.Text;
-            Request.Command = "Execute ('" + BuildTodayQuery() + "')";
+            Request.Command = BuildTodayQuery();
+                //"Execute ('" + BuildTodayQuery() + "')";
 
             //if (debug)
             //    lm.Write("DataSetManager/LoadTodaysDataSet:  " + Request.Command);
@@ -200,7 +202,8 @@ namespace ReqReceipt
                 {
                     item = Convert.ToInt32(key);
                     status = itemsThatChanged[item].ToString();
-                    Request.Command = "Execute ('" + BuildReqItemUpdateQuery(item, status) + "')";
+                    Request.Command = BuildReqItemUpdateQuery(item, status);
+                        //"Execute ('" + BuildReqItemUpdateQuery(item, status) + "')";
                     ODMDataSetFactory.ExecuteDataWriter(ref Request);
                 }
                 catch (Exception ex)
@@ -214,8 +217,6 @@ namespace ReqReceipt
         {
             if (trace) { lm.Write("TRACE:  DataSetManager/TruncateReqItemReceipt"); }
             //remove KILLED and COMPLETE reqItems from the hmcmm_ReqItemReceipt table
-            int item = 0;
-            string status = "";
             ODMRequest Request = new ODMRequest();
             Request.ConnectString = connectStrBIAdmin;
             Request.CommandType = CommandType.Text;
@@ -309,9 +310,7 @@ namespace ReqReceipt
                             //reqBuyer.Add
 
                             Request.Command = BuildReqItemInsertQuery(drow);
-                            ODMDataSetFactory.ExecuteNonQuery(ref Request);
-
-                            
+                            ODMDataSetFactory.ExecuteNonQuery(ref Request);                           
                         }
                     }
                 }
@@ -328,17 +327,18 @@ namespace ReqReceipt
             ArrayList buyerCode = new ArrayList();
             try
             {
-                Request.Command = "SELECT EMAIL FROM [dbo].[uwm_CC_TEAM] WHERE COST_CENTER = " + cc;
-                buyerCode = ODMDataSetFactory.ExecuteDataReader(Request);
+                Request.Command = "SELECT EMAIL,TEAM FROM [dbo].[uwm_CC_TEAM] WHERE COST_CENTER = '" + cc + "'";
+                buyerCode = ODMDataSetFactory.ExecuteDataReader(Request,2);
                 if (!(reqBuyer.ContainsKey(reqID)))
-                    reqBuyer.Add(reqID, buyerCode[0].ToString());
+                {
+                    reqBuyer.Add(reqID, buyerCode[0].ToString() + "|" + buyerCode[1].ToString().Trim());
+                }
             }
             catch (Exception ex)
             {
                 lm.Write("DataSetManager/LoadBuyerList:    " + ex.Message);
             }
         }
-
 
         private void LoadItemDescr(string reqID)
         {
@@ -406,11 +406,12 @@ namespace ReqReceipt
         {
             if (trace) { lm.Write("TRACE:  DataSetManager/LoadYesterdayList"); }
             if (trace) { lm.Write("TRACE:  DataSetManager/LoadYesterdayList"); }
-            //select req_item_id and req_item_stat and put into to a hashtable
+            //select req_item_id and req_item_stat and put into a hashtable
             ODMRequest Request = new ODMRequest();
             Request.ConnectString = connectStrBIAdmin;
             Request.CommandType = CommandType.Text;
-            Request.Command = "Execute ('" + BuildYesterdayQuery() + "')";
+            Request.Command = BuildYesterdayQuery();
+                //"Execute ('" + BuildYesterdayQuery() + "')";
 
             if (debug)
                 lm.Write("DataSetManager/LoadYesterdayList:  " + Request.Command);
@@ -430,7 +431,8 @@ namespace ReqReceipt
             ODMRequest Request = new ODMRequest();
             Request.ConnectString = connectStrHEMM;
             Request.CommandType = CommandType.Text;
-            Request.Command = "Execute ('" + BuildCurrentQuery(reqItemList) + "')";
+            Request.Command = BuildCurrentQuery(reqItemList);
+            //"Execute ('" + BuildCurrentQuery(reqItemList) + "')";
 
             if (debug)
                 lm.Write("DataSetManager/LoadTodaysDataSet:  " + Request.Command);
@@ -454,19 +456,19 @@ namespace ReqReceipt
                            "REQ.REQ_ID, " +                        //3
                            "ITEM.ITEM_NO, " +                    //4
                            "CASE RI.STAT " +
-                           "WHEN 1 THEN ''Open'' " +
-                           "WHEN 2 THEN ''Pend Apvl'' " +
-                           "WHEN 3 THEN ''Approved'' " +
-                           "WHEN 4 THEN ''Removed'' " +
-                           "WHEN 5 THEN ''Pending PO'' " +
-                           "WHEN 6 THEN ''Open Stock Order'' " +
-                           "WHEN 8 THEN ''Draft'' " +
-                           "WHEN 9 THEN ''On Order'' " +
-                           "WHEN 10 THEN ''Killed'' " +
-                           "WHEN 11 THEN ''Complete'' " +
-                           "WHEN 12 THEN ''Back Order'' " +
-                           "WHEN 14 THEN ''On Order'' " +
-                           "WHEN 24 THEN ''Pend Informational Apvl'' " +
+                           "WHEN 1 THEN 'Open' " +
+                           "WHEN 2 THEN 'Pend Apvl' " +
+                           "WHEN 3 THEN 'Approved' " +
+                           "WHEN 4 THEN 'Removed' " +
+                           "WHEN 5 THEN 'Pending PO' " +
+                           "WHEN 6 THEN 'Open Stock Order' " +
+                           "WHEN 8 THEN 'Draft' " +
+                           "WHEN 9 THEN 'On Order' " +
+                           "WHEN 10 THEN 'Killed' " +
+                           "WHEN 11 THEN 'Complete' " +
+                           "WHEN 12 THEN 'Back Order' " +
+                           "WHEN 14 THEN 'On Order' " +
+                           "WHEN 24 THEN 'Pend Informational Apvl' " +
                            "ELSE CAST(RI.STAT AS VARCHAR(2)) " +
                            "END [ITEM STAT],  " +                //5
                            "RI.STAT_CHG_DATE, " +            //6
@@ -481,7 +483,7 @@ namespace ReqReceipt
                            "JOIN dbo.USR ON USR.USR_ID = REQ.REC_CREATE_USR_ID " +
                            "JOIN CC ON CC.CC_ID = REQ.CC_ID " +
                            "WHERE REQ.REC_CREATE_DATE BETWEEN CONVERT(DATE,GETDATE()) AND CONVERT(DATE,GETDATE() + 1) " +
-                           "AND LOGIN_ID <> ''iface'' AND REQ_TYPE IN (2) AND RI.STAT <> 8 " +
+                           "AND LOGIN_ID <> 'iface' AND REQ_TYPE IN (2) AND RI.STAT <> 8 " +
                            "ORDER BY 8,4,1 ";               //references param 7,3 and 0 above  --  AND REQ_TYPE <> 3  RI.STAT = 8 = "Draft"
                                                             // Req_Type changed to 8 for par forms to catch actual par form submissions
             return query;
@@ -508,20 +510,20 @@ namespace ReqReceipt
            "SELECT " +
             "REQ_ITEM_ID, " +   //0
             "CASE REQ_ITEM.STAT " +
-            "WHEN 1 THEN ''Open'' " +
-            "WHEN 2 THEN ''Pend Apvl'' " +
-            "WHEN 3 THEN ''Approved'' " +
-            "WHEN 4 THEN ''Removed'' " +
-            "WHEN 5 THEN ''Pending PO'' " +
-            "WHEN 6 THEN ''Open Stock Order'' " +
-            "WHEN 8 THEN ''Draft'' " +
-            "WHEN 9 THEN ''On Order'' " +
-            "WHEN 10 THEN ''Killed'' " +
-            "WHEN 11 THEN ''Complete'' " +
-            "WHEN 12 THEN ''Back Order'' " +
-            "WHEN 14 THEN ''On Order'' " +
-            "WHEN 15 THEN ''Auto PO'' " +
-             "WHEN 24 THEN ''Pend Informational Apvl'' " +
+            "WHEN 1 THEN 'Open' " +
+            "WHEN 2 THEN 'Pend Apvl' " +
+            "WHEN 3 THEN 'Approved' " +
+            "WHEN 4 THEN 'Removed' " +
+            "WHEN 5 THEN 'Pending PO' " +
+            "WHEN 6 THEN 'Open Stock Order' " +
+            "WHEN 8 THEN 'Draft' " +
+            "WHEN 9 THEN 'On Order' " +
+            "WHEN 10 THEN 'Killed' " +
+            "WHEN 11 THEN 'Complete' " +
+            "WHEN 12 THEN 'Back Order' " +
+            "WHEN 14 THEN 'On Order' " +
+            "WHEN 15 THEN 'Auto PO' " +
+             "WHEN 24 THEN 'Pend Informational Apvl' " +
             "ELSE CAST(REQ_ITEM.STAT AS VARCHAR(2)) " +
             "END [ITEM STAT],  " +    //1
             "REQ_ITEM.STAT_CHG_DATE " +  //2
@@ -538,9 +540,15 @@ namespace ReqReceipt
              "UPDATE " +
              "hmcmm_ReqItemReceipt " +
              "SET " +
-             "STAT_CHG_DATE = ''" + DateTime.Now + "''," +
-             "STAT = ''" + status + "'' " +
+             "STAT_CHG_DATE = '" + DateTime.Now + "'," +
+             "STAT = '" + status + "' " +
              "WHERE REQ_ITEM_ID in (" + reqItem + ")";
+            //////"UPDATE " +
+            ////// "hmcmm_ReqItemReceipt " +
+            ////// "SET " +
+            ////// "STAT_CHG_DATE = ''" + DateTime.Now + "''," +
+            ////// "STAT = ''" + status + "'' " +
+            ////// "WHERE REQ_ITEM_ID in (" + reqItem + ")";
             return query;
         }
 
